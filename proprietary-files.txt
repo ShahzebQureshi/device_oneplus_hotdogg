@@ -216,3 +216,26 @@ vendor/firmware/aw8697_haptic_168.bin
 vendor/firmware/aw8697_haptic_170.bin
 vendor/firmware/aw8697_haptic_172.bin
 vendor/firmware/aw8697_haptic_174.bin
+
+# Fingerprint (32-bit)
+vendor/lib/hw/goodix.fod.msmnile.so
+vendor/lib/fp_hal_extension.so
+vendor/lib/libgf_ud_hal.so
+
+# Qualcomm MDM Interface
+vendor/bin/ks
+vendor/bin/mdm_helper
+vendor/bin/mdm_helper_proxy
+vendor/bin/oemnvbkdaemon
+vendor/bin/init.mdm.sh
+vendor/lib/libmdmdetect.so
+vendor/lib/liboemnvbk_img_helper.so
+vendor/lib64/libmdmdetect.so
+vendor/lib64/liboemnvbk_img_helper.so
+vendor/lib64/libmdmimgload.so
+
+# ODM feature list
+odm/etc/odm_feature_list
+
+# Sensors (32-bit)
+vendor/lib/sensors.ssc.so
