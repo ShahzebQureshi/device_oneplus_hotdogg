@@ -34,6 +34,9 @@ jobs:
           cd vendor_tree
           git config user.name "Shahzeb Qureshi"
           git config user.email "shahzebqureshi6@gmail.com"
+          git config http.postBuffer 524288000
+          git config http.lowSpeedLimit 0
+          git config http.lowSpeedTime 999999
           git remote set-url origin https://x-access-token:${{ secrets.PAT }}@github.com/ShahzebQureshi/vendor_oneplus_hotdogg.git
           git add -A
           git commit -m "hotdogg: adapt AOSPA vendor for YAAP A16"
