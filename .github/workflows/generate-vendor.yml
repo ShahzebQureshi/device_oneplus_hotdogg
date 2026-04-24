@@ -28,6 +28,10 @@ jobs:
       - name: Fix BoardConfigVendor.mk
         run: |
           sed -i 's/oneplus7tpronr/hotdogg/g' vendor_tree/BoardConfigVendor.mk 2>/dev/null || true
+      - name: Rename all oneplus7tpronr references
+        run: |
+          find vendor_tree -type f \( -name "*.mk" -o -name "*.bp" -o -name "*.rc" -o -name "*.sh" \) \
+            -exec sed -i 's/oneplus7tpronr/hotdogg/g' {} +
 
       - name: Push to GitHub
         run: |
