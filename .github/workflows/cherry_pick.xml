@@ -1,0 +1,60 @@
+---
+name: Cherry-pick
+on: workflow_dispatch
+permissions:
+  contents: write
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: sixteen-test
+          fetch-depth: 0
+      - run: >
+          git config user.name "Shahzeb Qureshi"
+
+          git config user.email "shahzebqureshi6@gmail.com"
+
+          git remote remove upstream 2>/dev/null || true
+
+          git remote add upstream https://github.com/hotdogg-dev/android_device_oneplus_hotdogg
+
+          git fetch upstream --depth=50
+
+          git cherry-pick -x 2b81b8271b47164a78763b48db6c471ac11f93c7 || {
+            printf '#\n# Copyright (C) 2019 The LineageOS Project\n#\n# SPDX-License-Identifier: Apache-2.0\n#\nPRODUCT_MAKEFILES := \\\n    $(LOCAL_DIR)/yaap_hotdog.mk \\\n    $(LOCAL_DIR)/yaap_hotdogg.mk\n' > AndroidProducts.mk
+            git add AndroidProducts.mk
+            git rm --cached bluetooth/include/bdroid_buildcfg.h 2>/dev/null || true
+            rm -f bluetooth/include/bdraid_buildcfg.h
+            git rm --cached lineage_hotdog.mk 2>/dev/null || true
+            git rm --cached lineage_hotdogg.mk 2>/dev/null || true
+            rm -f lineage_hotdog.mk lineage_hotdogg.mk
+            git add -A
+            git cherry-pick --continue --no-edit
+          }
+
+          git cherry-pick -x 7d4abf57cf9e0fea1d3da15399e44e866daf3285 || {
+            git checkout --ours proprietary-files.txt
+            printf '\n# Fingerprint (32-bit)\nvendor/lib/hw/goodix.fod.msmnile.so\nvendor/lib/fp_hal_extension.so\nvendor/lib/libgf_ud_hal.so\n\n# Qualcomm MDM Interface\nvendor/bin/ks\nvendor/bin/mdm_helper\nvendor/bin/mdm_helper_proxy\nvendor/bin/oemnvbkdaemon\nvendor/bin/init.mdm.sh\nvendor/lib/libmdmdetect.so\nvendor/lib/liboemnvbk_img_helper.so\nvendor/lib64/libmdmdetect.so\nvendor/lib64/liboemnvbk_img_helper.so\nvendor/lib64/libmdmimgload.so\n\n# ODM feature list\nodm/etc/odm_feature_list\n\n# Sensors (32-bit)\nvendor/lib/sensors.ssc.so\n' >> proprietary-files.txt
+            git add proprietary-files.txt
+            git cherry-pick --continue --no-edit
+          }
+
+          for c in \
+
+          80ddf48059a1c390f9ee8b8010f0f5732ef92f51 \
+
+          ec75efb89bca9898f226827c0b366e8a12bac452 \
+
+          a3d106bcdf285cb057df6dd856a1f22985735449
+
+          do
+            git cherry-pick -x $c || {
+              echo "Cherry-pick failed at $c"
+              git status
+              exit 1
+            }
+          done
+
+          git push origin HEAD:sixteen-test
