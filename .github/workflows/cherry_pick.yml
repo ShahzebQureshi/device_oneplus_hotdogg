@@ -1,54 +1,108 @@
----
 name: Cherry-pick
 on: workflow_dispatch
+
 permissions:
   contents: write
+
 jobs:
   run:
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
         with:
           ref: sixteen-test
           fetch-depth: 0
-      - run: >
+
+      - run: |
           git config user.name "Shahzeb Qureshi"
+          git config user.email "shahzebqureshi6@users.noreply.github.com"
 
-          git config user.email "shahzebqureshi6@gmail.com"
-
+          # Setup upstream
           git remote remove upstream 2>/dev/null || true
-
           git remote add upstream https://github.com/hotdogg-dev/android_device_oneplus_hotdogg
+          git fetch upstream
 
-          git fetch upstream --depth=50
+          ########################################
+          # FIRST COMMIT (with heavy conflict fix)
+          ########################################
 
           git cherry-pick -x 2b81b8271b47164a78763b48db6c471ac11f93c7 || {
-            printf '#\n# Copyright (C) 2019 The LineageOS Project\n#\n# SPDX-License-Identifier: Apache-2.0\n#\nPRODUCT_MAKEFILES := \\\n    $(LOCAL_DIR)/yaap_hotdog.mk \\\n    $(LOCAL_DIR)/yaap_hotdogg.mk\n' > AndroidProducts.mk
+
+            echo "Resolving conflicts for first commit"
+
+            # Fix AndroidProducts.mk safely
+            sed -i 's/yaap_hotdog\.mk/yaap_hotdogg.mk/g' AndroidProducts.mk 2>/dev/null || true
+            grep -q "yaap_hotdogg.mk" AndroidProducts.mk || \
+            echo "    \$(LOCAL_DIR)/yaap_hotdogg.mk \\" >> AndroidProducts.mk
             git add AndroidProducts.mk
+
+            # Remove unwanted files
             git rm --cached bluetooth/include/bdroid_buildcfg.h 2>/dev/null || true
-            rm -f bluetooth/include/bdraid_buildcfg.h
+            rm -f bluetooth/include/bdroid_buildcfg.h
+
             git rm --cached lineage_hotdog.mk 2>/dev/null || true
             git rm --cached lineage_hotdogg.mk 2>/dev/null || true
             rm -f lineage_hotdog.mk lineage_hotdogg.mk
+
+            # Resolve yaap_hotdogg.mk properly
+            git checkout --ours yaap_hotdogg.mk 2>/dev/null || true
+
+            # If file doesn't exist, derive from hotdog
+            if [ ! -f yaap_hotdogg.mk ] && [ -f yaap_hotdog.mk ]; then
+              cp yaap_hotdog.mk yaap_hotdogg.mk
+            fi
+
+            # Apply transformation
+            if [ -f yaap_hotdogg.mk ]; then
+              sed -i 's/yaap_hotdog/yaap_hotdogg/g' yaap_hotdogg.mk
+              sed -i 's/PRODUCT_DEVICE := hotdog/PRODUCT_DEVICE := hotdogg/g' yaap_hotdogg.mk
+              git add yaap_hotdogg.mk
+            fi
+
             git add -A
-            git cherry-pick --continue --no-edit
+
+            # Handle empty cherry-pick safely
+            if git diff --cached --quiet; then
+              echo "Empty commit, skipping"
+              git cherry-pick --skip
+            else
+              git cherry-pick --continue --no-edit
+            fi
           }
+
+          ########################################
+          # SECOND COMMIT (proprietary-files fix)
+          ########################################
 
           git cherry-pick -x 7d4abf57cf9e0fea1d3da15399e44e866daf3285 || {
-            git checkout --ours proprietary-files.txt
-            printf '\n# Fingerprint (32-bit)\nvendor/lib/hw/goodix.fod.msmnile.so\nvendor/lib/fp_hal_extension.so\nvendor/lib/libgf_ud_hal.so\n\n# Qualcomm MDM Interface\nvendor/bin/ks\nvendor/bin/mdm_helper\nvendor/bin/mdm_helper_proxy\nvendor/bin/oemnvbkdaemon\nvendor/bin/init.mdm.sh\nvendor/lib/libmdmdetect.so\nvendor/lib/liboemnvbk_img_helper.so\nvendor/lib64/libmdmdetect.so\nvendor/lib64/liboemnvbk_img_helper.so\nvendor/lib64/libmdmimgload.so\n\n# ODM feature list\nodm/etc/odm_feature_list\n\n# Sensors (32-bit)\nvendor/lib/sensors.ssc.so\n' >> proprietary-files.txt
+
+            echo "Resolving proprietary-files conflict"
+
+            git checkout --ours proprietary-files.txt 2>/dev/null || true
+
+            # Avoid duplicate append
+            if ! grep -q "goodix.fod.msmnile.so" proprietary-files.txt; then
+              printf '\n# Fingerprint (32-bit)\nvendor/lib/hw/goodix.fod.msmnile.so\nvendor/lib/fp_hal_extension.so\nvendor/lib/libgf_ud_hal.so\n\n# Qualcomm MDM Interface\nvendor/bin/ks\nvendor/bin/mdm_helper\nvendor/bin/mdm_helper_proxy\nvendor/bin/oemnvbkdaemon\nvendor/bin/init.mdm.sh\nvendor/lib/libmdmdetect.so\nvendor/lib/liboemnvbk_img_helper.so\nvendor/lib64/libmdmdetect.so\nvendor/lib64/liboemnvbk_img_helper.so\nvendor/lib64/libmdmimgload.so\n\n# ODM feature list\nodm/etc/odm_feature_list\n\n# Sensors (32-bit)\nvendor/lib/sensors.ssc.so\n' >> proprietary-files.txt
+            fi
+
             git add proprietary-files.txt
-            git cherry-pick --continue --no-edit
+
+            if git diff --cached --quiet; then
+              git cherry-pick --skip
+            else
+              git cherry-pick --continue --no-edit
+            fi
           }
 
+          ########################################
+          # REMAINING COMMITS
+          ########################################
+
           for c in \
-
           80ddf48059a1c390f9ee8b8010f0f5732ef92f51 \
-
           ec75efb89bca9898f226827c0b366e8a12bac452 \
-
           a3d106bcdf285cb057df6dd856a1f22985735449
-
           do
             git cherry-pick -x $c || {
               echo "Cherry-pick failed at $c"
@@ -56,5 +110,9 @@ jobs:
               exit 1
             }
           done
+
+          ########################################
+          # PUSH
+          ########################################
 
           git push origin HEAD:sixteen-test
