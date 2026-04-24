@@ -6,11 +6,18 @@ jobs:
   run:
     runs-on: ubuntu-latest
     steps:
+      - name: Install git-lfs
+        run: |
+          sudo apt-get install -y git-lfs
+          git lfs install
+
       - name: Clone AOSPA vendor
         run: |
           git clone --depth=1 \
             https://gitlab.com/aospa-timo/op7/vendor/oneplus/oneplus7tpronr \
             vendor_tree
+          cd vendor_tree
+          git lfs pull
 
       - name: Fix soong_namespace
         run: |
@@ -37,7 +44,9 @@ jobs:
           git config http.postBuffer 524288000
           git config http.lowSpeedLimit 0
           git config http.lowSpeedTime 999999
+          git lfs install
           git remote set-url origin https://x-access-token:${{ secrets.PAT }}@github.com/ShahzebQureshi/vendor_oneplus_hotdogg.git
           git add -A
           git commit -m "hotdogg: adapt AOSPA vendor for YAAP A16"
           git push origin HEAD:main --force
+          git lfs push origin HEAD:main --all
