@@ -36,22 +36,24 @@ jobs:
           find vendor_tree -type f \( -name "*.mk" -o -name "*.bp" \) \
             -exec sed -i 's/oneplus7tpronr/hotdogg/g' {} +
 
-      - name: Migrate LFS to regular git objects
+      - name: Copy files to fresh repo
         run: |
-          cd vendor_tree
-          git lfs migrate export --include="*.so,*.bin,*.mdt,*.fbn,*.acdb,*.ncf,*.qwsp" --yes
-          git reflog expire --expire=now --all
-          git gc --prune=now --aggressive
+          mkdir vendor_fresh
+          cp -r vendor_tree/. vendor_fresh/
+          rm -rf vendor_fresh/.git
+          rm -f vendor_fresh/.gitattributes
 
-      - name: Commit and push
+      - name: Commit and push fresh repo
         run: |
-          cd vendor_tree
+          cd vendor_fresh
+          git init
           git config user.name "Shahzeb Qureshi"
           git config user.email "shahzebqureshi6@gmail.com"
           git config http.postBuffer 524288000
           git config http.lowSpeedLimit 0
           git config http.lowSpeedTime 999999
-          git remote set-url origin https://x-access-token:${{ secrets.PAT }}@github.com/ShahzebQureshi/vendor_oneplus_hotdogg.git
+          git remote add origin https://x-access-token:${{ secrets.PAT }}@github.com/ShahzebQureshi/vendor_oneplus_hotdogg.git
           git add -A
-          git commit --allow-empty -m "hotdogg: adapt AOSPA vendor for YAAP A16"
-          git push origin HEAD:main --force
+          git commit -m "hotdogg: adapt AOSPA vendor for YAAP A16"
+          git branch -M main
+          git push origin main --force
