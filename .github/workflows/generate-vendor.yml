@@ -11,9 +11,9 @@ jobs:
           sudo apt-get install -y git-lfs
           git lfs install
 
-      - name: Clone AOSPA vendor
+      - name: Clone AOSPA vendor with LFS
         run: |
-          git clone --depth=1 \
+          GIT_LFS_SKIP_SMUDGE=0 git clone --depth=1 \
             https://gitlab.com/aospa-timo/op7/vendor/oneplus/oneplus7tpronr \
             vendor_tree
           cd vendor_tree
@@ -36,6 +36,13 @@ jobs:
           find vendor_tree -type f \( -name "*.mk" -o -name "*.bp" \) \
             -exec sed -i 's/oneplus7tpronr/hotdogg/g' {} +
 
+      - name: Migrate LFS to regular git objects
+        run: |
+          cd vendor_tree
+          git lfs migrate export --include="*.so,*.bin,*.mdt,*.fbn,*.acdb,*.ncf,*.qwsp" --yes
+          git reflog expire --expire=now --all
+          git gc --prune=now --aggressive
+
       - name: Commit and push
         run: |
           cd vendor_tree
@@ -44,9 +51,7 @@ jobs:
           git config http.postBuffer 524288000
           git config http.lowSpeedLimit 0
           git config http.lowSpeedTime 999999
-          git lfs install
           git remote set-url origin https://x-access-token:${{ secrets.PAT }}@github.com/ShahzebQureshi/vendor_oneplus_hotdogg.git
           git add -A
-          git commit -m "hotdogg: adapt AOSPA vendor for YAAP A16"
+          git commit --allow-empty -m "hotdogg: adapt AOSPA vendor for YAAP A16"
           git push origin HEAD:main --force
-          git lfs push origin HEAD:main --all
