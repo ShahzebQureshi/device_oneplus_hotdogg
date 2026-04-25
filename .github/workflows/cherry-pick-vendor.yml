@@ -1,0 +1,36 @@
+name: Cherry-pick vendor commits
+on: workflow_dispatch
+permissions:
+  contents: write
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: ShahzebQureshi/proprietary_vendor_oneplus_guacamole
+          ref: infinity
+          fetch-depth: 0
+          token: ${{ secrets.PAT }}
+
+      - run: |
+          git config user.name "Shahzeb Qureshi"
+          git config user.email "shahzebqureshi6@gmail.com"
+
+          git remote remove upstream 2>/dev/null || true
+          git remote add upstream https://github.com/Codecity001/vendor_oneplus_guacamoleb-1
+          git fetch upstream 16
+
+          git cherry-pick -x 6dfbffec9fc30ea0661905fd2b983eaf3e7193c4 || {
+            echo "Cherry-pick failed at 6dfbffec"
+            git status
+            exit 1
+          }
+
+          git cherry-pick -x 118bbb99dec9ce246af117bb1a3608a1f2102b45 || {
+            echo "Cherry-pick failed at 118bbb99"
+            git status
+            exit 1
+          }
+
+          git push origin infinity
