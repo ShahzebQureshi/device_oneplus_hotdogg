@@ -22,9 +22,28 @@ jobs:
           git fetch upstream 16
 
           git cherry-pick -x 6dfbffec9fc30ea0661905fd2b983eaf3e7193c4 || {
-            echo "Cherry-pick failed at 6dfbffec"
-            git status
-            exit 1
+            echo "Resolving conflicts for commit 1"
+
+            # Fix Android.bp - use theirs (has new blobs) then fix guacamoleb -> guacamole
+            git checkout --theirs Android.bp
+            sed -i 's/guacamoleb/guacamole/g' Android.bp
+            git add Android.bp
+
+            # Remove guacamoleb-vendor.mk - we don't use it
+            git rm --cached guacamoleb-vendor.mk 2>/dev/null || true
+            rm -f guacamoleb-vendor.mk
+
+            # Add goldResult.bin to our guacamole-vendor.mk PRODUCT_COPY_FILES
+            grep -q "goldResult.bin" guacamole-vendor.mk || \
+              sed -i 's|vendor/oneplus/guacamole/proprietary/odm/lib64/camera/com.qti.tuned.sunny_imx471_18821.bin:$(TARGET_COPY_OUT_ODM)/lib64/camera/com.qti.tuned.sunny_imx471_18821.bin \\|vendor/oneplus/guacamole/proprietary/odm/lib64/camera/com.qti.tuned.sunny_imx471_18821.bin:$(TARGET_COPY_OUT_ODM)/lib64/camera/com.qti.tuned.sunny_imx471_18821.bin \\\n    vendor/oneplus/guacamole/proprietary/odm/lib64/goldResult.bin:$(TARGET_COPY_OUT_ODM)/lib64/goldResult.bin \\|' guacamole-vendor.mk
+
+            # Add camera.qcom and com.qti.chi.override to PRODUCT_PACKAGES
+            grep -q "camera.qcom" guacamole-vendor.mk || \
+              sed -i 's/PRODUCT_PACKAGES += \\/PRODUCT_PACKAGES += \\\n    camera.qcom \\\n    com.qti.chi.override \\/' guacamole-vendor.mk
+
+            git add guacamole-vendor.mk
+            git add -A
+            git cherry-pick --continue --no-edit
           }
 
           git cherry-pick -x 118bbb99dec9ce246af117bb1a3608a1f2102b45 || {
